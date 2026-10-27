@@ -1,0 +1,231 @@
+{
+  "info": {
+    "_postman_id": "a9d84e12-7c33-4a9b-9b1e-algeria-v4",
+    "name": "Algerian Multi-Courier Logistics Engine (V4)",
+    "description": "Complete Postman collection to test:\n1. Local Engine Sandbox Server (http://localhost:4000) — Test payload translation, phone normalization, AES-256-GCM encryption, Phase-Gate state machine webhooks, and COD financial reconciliation without needing live courier keys.\n2. Direct Live Courier Endpoints (Yalidine, ZR Express / Procolis, Ecotrack 2-Step, Maystro Delivery).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "LOCAL_ENGINE_URL", "value": "http://localhost:4000" },
+    { "key": "YALIDINE_API_ID", "value": "YOUR_YALIDINE_API_ID" },
+    { "key": "YALIDINE_API_TOKEN", "value": "YOUR_YALIDINE_API_TOKEN" },
+    { "key": "ZREXPRESS_TOKEN", "value": "YOUR_PROCOLIS_TOKEN" },
+    { "key": "ZREXPRESS_KEY", "value": "YOUR_PROCOLIS_KEY" },
+    { "key": "ECOTRACK_BASE_URL", "value": "https://anderson.ecotrack.dz" },
+    { "key": "ECOTRACK_API_TOKEN", "value": "YOUR_ECOTRACK_BEARER_TOKEN" },
+    { "key": "MAYSTRO_API_TOKEN", "value": "YOUR_MAYSTRO_STORE_TOKEN" },
+    { "key": "MAYSTRO_DEFAULT_PRODUCT_UUID", "value": "d3b07384-d113-4e6e-8c9c-123456789abc" }
+  ],
+  "item": [
+    {
+      "name": "1. Local Engine Sandbox (No API Keys Needed)",
+      "item": [
+        {
+          "name": "1.1 Dispatch Order (Test Any Courier Adapter)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{LOCAL_ENGINE_URL}}/api/sandbox/dispatch",
+              "host": ["{{LOCAL_ENGINE_URL}}"],
+              "path": ["api", "sandbox", "dispatch"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierCode\": \"yalidine\",\n  \"order\": {\n    \"reference\": \"ORD-12345\",\n    \"customerName\": \"Mohamed Benali\",\n    \"phonePrimary\": \"+213 550 12 34 56\",\n    \"phoneSecondary\": \"023 12 34 56\",\n    \"deliveryAddress\": \"Hai En-Nour 12\",\n    \"originWilayaName\": \"Alger\",\n    \"destinationWilayaId\": 31,\n    \"destinationWilayaName\": \"Oran\",\n    \"destinationCommuneId\": 1104,\n    \"destinationCommuneName\": \"Bir El Djir\",\n    \"isStopdesk\": false,\n    \"stopdeskId\": null,\n    \"productDescription\": \"1x Veste Cuir Noir (Taille L)\",\n    \"totalCodAmount\": 4500,\n    \"isFreeShipping\": false,\n    \"declaredValue\": 4500,\n    \"doInsurance\": false,\n    \"hasExchange\": false,\n    \"productToCollect\": null,\n    \"estimatedWeight\": 1.2\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "1.2 Simulate Webhook Transition (Phase-Gated State Machine)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{LOCAL_ENGINE_URL}}/api/sandbox/webhook",
+              "host": ["{{LOCAL_ENGINE_URL}}"],
+              "path": ["api", "sandbox", "webhook"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courierCode\": \"yalidine\",\n  \"trackingNumber\": \"yal-123456\",\n  \"currentPhase\": \"RETURN_IN_TRANSIT\",\n  \"targetPhase\": \"TERMINAL_DELIVERED\",\n  \"rawStatus\": \"LIVRE\",\n  \"eventTimestamp\": \"2026-10-27T19:00:00Z\"\n}"
+            }
+          }
+        },
+        {
+          "name": "1.3 Audit COD Payout Batch (Financial Ledger)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{LOCAL_ENGINE_URL}}/api/sandbox/reconcile",
+              "host": ["{{LOCAL_ENGINE_URL}}"],
+              "path": ["api", "sandbox", "reconcile"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"batchReference\": \"VERSEMENT-YAL-2026-10\",\n  \"reportedCourierPayoutDzd\": 3950,\n  \"entries\": [\n    { \"parcelId\": 101, \"entryType\": \"COD_CREDIT\", \"amount\": 4500, \"idempotencyKey\": \"p101:COD_CREDIT:init\" },\n    { \"parcelId\": 101, \"entryType\": \"BASE_DELIVERY_DEBIT\", \"amount\": 500, \"idempotencyKey\": \"p101:BASE_DELIVERY_DEBIT:init\" },\n    { \"parcelId\": 101, \"entryType\": \"COD_FEE_DEBIT\", \"amount\": 50, \"idempotencyKey\": \"p101:COD_FEE_DEBIT:init\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "1.4 Test AES-256-GCM Envelope Encryption & AAD",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{LOCAL_ENGINE_URL}}/api/sandbox/encrypt",
+              "host": ["{{LOCAL_ENGINE_URL}}"],
+              "path": ["api", "sandbox", "encrypt"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": 1,\n  \"courierCode\": \"yalidine\",\n  \"secretPlaintext\": \"my_live_yalidine_api_token_12345\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Live Courier APIs (Direct Courier Testing)",
+      "item": [
+        {
+          "name": "2.1 Yalidine — Create Parcel (POST /v1/parcels)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-API-ID", "value": "{{YALIDINE_API_ID}}" },
+              { "key": "X-API-TOKEN", "value": "{{YALIDINE_API_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://api.yalidine.app/v1/parcels",
+              "protocol": "https",
+              "host": ["api", "yalidine", "app"],
+              "path": ["v1", "parcels"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"order_id\": \"TEST-ORD-1001\",\n    \"from_wilaya_name\": \"Alger\",\n    \"firstname\": \"Mohamed\",\n    \"familyname\": \"Benali\",\n    \"contact_phone\": \"0550123456\",\n    \"address\": \"[Tel 2: 023123456] - Hai En-Nour 12\",\n    \"to_wilaya_name\": \"Oran\",\n    \"to_commune_name\": \"Bir El Djir\",\n    \"is_stopdesk\": false,\n    \"stopdesk_id\": null,\n    \"price\": 4500,\n    \"freeshipping\": false,\n    \"product_list\": \"1x Veste Cuir Noir (Taille L)\",\n    \"has_exchange\": false,\n    \"product_to_collect\": null,\n    \"do_insurance\": false,\n    \"declared_value\": 0,\n    \"length\": null,\n    \"width\": null,\n    \"height\": null,\n    \"weight\": 1.2\n  }\n]"
+            }
+          }
+        },
+        {
+          "name": "2.2 Yalidine — Delete Test Parcel (DELETE /v1/parcels)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "X-API-ID", "value": "{{YALIDINE_API_ID}}" },
+              { "key": "X-API-TOKEN", "value": "{{YALIDINE_API_TOKEN}}" }
+            ],
+            "url": {
+              "raw": "https://api.yalidine.app/v1/parcels?tracking=yal-123456",
+              "protocol": "https",
+              "host": ["api", "yalidine", "app"],
+              "path": ["v1", "parcels"],
+              "query": [{ "key": "tracking", "value": "yal-123456" }]
+            }
+          }
+        },
+        {
+          "name": "2.3 ZR Express (Procolis) — Create Parcel (POST /api_v1/add_colis)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "token", "value": "{{ZREXPRESS_TOKEN}}" },
+              { "key": "key", "value": "{{ZREXPRESS_KEY}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://procolis.com/api_v1/add_colis",
+              "protocol": "https",
+              "host": ["procolis", "com"],
+              "path": ["api_v1", "add_colis"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Colis\": [\n    {\n      \"ID_Externe\": \"TEST-ORD-1001\",\n      \"Tracking\": \"\",\n      \"TypeLivraison\": 0,\n      \"TStopDesk\": 0,\n      \"TypeColis\": 0,\n      \"Confrim\": 1,\n      \"Client\": \"Mohamed Benali\",\n      \"MobileA\": \"0550123456\",\n      \"MobileB\": \"023123456\",\n      \"Adresse\": \"Hai En-Nour 12\",\n      \"IDWilaya\": 31,\n      \"Commune\": \"Bir El Djir\",\n      \"Total\": 4500,\n      \"Produit\": \"1x Veste Cuir Noir (Taille L)\",\n      \"Note\": \"Appeler avant passage\",\n      \"Poids\": 1.2\n    }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "2.4 Ecotrack Step A — Create Draft (POST /api/v1/create/order)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ECOTRACK_API_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{ECOTRACK_BASE_URL}}/api/v1/create/order",
+              "host": ["{{ECOTRACK_BASE_URL}}"],
+              "path": ["api", "v1", "create", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"TEST-ORD-1001\",\n  \"nom_client\": \"Mohamed Benali\",\n  \"telephone\": \"0550123456\",\n  \"telephone_2\": \"0660123456\",\n  \"adresse\": \"Hai En-Nour 12\",\n  \"code_wilaya\": 31,\n  \"commune\": \"Bir El Djir\",\n  \"montant\": 4500,\n  \"type\": 1,\n  \"stop_desk\": 0,\n  \"Id_stopdesk\": null,\n  \"produit\": \"1x Veste Cuir Noir (Taille L)\",\n  \"quantite\": 1,\n  \"poids\": 1.2,\n  \"remarque\": \"Tel Fixe: 023123456\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2.5 Ecotrack Step B — Validate Order (POST /api/v1/valid/order)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ECOTRACK_API_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{ECOTRACK_BASE_URL}}/api/v1/valid/order",
+              "host": ["{{ECOTRACK_BASE_URL}}"],
+              "path": ["api", "v1", "valid", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tracking\": \"EC123456789\",\n  \"ask_collection\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "2.6 Ecotrack — Delete Draft Order (POST /api/v1/delete/order)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ECOTRACK_API_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{ECOTRACK_BASE_URL}}/api/v1/delete/order",
+              "host": ["{{ECOTRACK_BASE_URL}}"],
+              "path": ["api", "v1", "delete", "order"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tracking\": \"EC123456789\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2.7 Maystro Delivery — Create Order (POST /api/stores/orders/)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Token {{MAYSTRO_API_TOKEN}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "https://backend.maystro-delivery.com/api/stores/orders/",
+              "protocol": "https",
+              "host": ["backend", "maystro-delivery", "com"],
+              "path": ["api", "stores", "orders", ""]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"external_id\": \"TEST-ORD-1001\",\n  \"customer_name\": \"Mohamed Benali\",\n  \"customer_phone\": \"0550123456\",\n  \"customer_phone2\": \"0660123456\",\n  \"destination_text\": \"Hai En-Nour 12\",\n  \"wilaya\": 31,\n  \"commune\": 1104,\n  \"delivery_type\": 1,\n  \"product_price\": 4500,\n  \"express\": false,\n  \"note_to_driver\": \"Tel Fixe: 023123456\",\n  \"details\": [\n    {\n      \"product\": \"{{MAYSTRO_DEFAULT_PRODUCT_UUID}}\",\n      \"description\": \"1x Veste Cuir Noir (Taille L)\",\n      \"quantity\": 1\n    }\n  ]\n}"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

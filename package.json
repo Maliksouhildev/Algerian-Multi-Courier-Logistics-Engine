@@ -5,7 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsc && node dist/verify.js",
+    "start:sandbox": "tsc && node dist/sandbox-server.js"
   },
   "keywords": [
     "algeria",

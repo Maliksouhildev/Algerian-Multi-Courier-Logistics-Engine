@@ -9,9 +9,13 @@ A battle-tested, multi-tenant logistics orchestration and COD financial clearing
 ```text
 ├── README.md                          # Complete V4 Master Engineering Specification & Owner's Guide
 ├── .env.example                       # Environment template
+├── postman/
+│   └── Algerian_Multi_Courier_Engine.postman_collection.json  # Ready-to-import Postman Collection
 ├── sql/
 │   └── 001_schema_v4.sql              # Consolidated, Zero-Patch PostgreSQL DDL
 └── src/
+    ├── verify.ts                      # Automated 6-Suite Verification Runner (npm test)
+    ├── sandbox-server.ts              # Local HTTP Sandbox Server for Postman (http://localhost:4000)
     ├── crypto/
     │   └── envelope.ts                # AES-256-GCM (12-byte IV + 16-byte Tag + Tenant AAD)
     ├── normalizers/
@@ -108,17 +112,30 @@ $$\text{Net Payout} = \sum \text{COD Credits} + \sum \text{Adjustment Credits} -
 
 ---
 
-## Quickstart
+## Quickstart & Testing (Postman + Automated Suite)
 
-1. **Initialize PostgreSQL Schema:**
+### 1. Run the Automated Verification Suite
+Tests AES-256-GCM envelope encryption + cross-tenant AAD protection, Algerian mobile/VoIP/landline phone normalization, all 4 courier adapters, the Redis quota throttler, the phase-gated state machine, and COD ledger reconciliation:
+```bash
+npm install
+npm test
+```
+
+### 2. Test Live in Postman (No Courier Keys Required!)
+1. Start the built-in Local Sandbox Server on `http://localhost:4000`:
    ```bash
-   psql "$DATABASE_URL" -f sql/001_schema_v4.sql
+   npm run start:sandbox
    ```
-2. **Configure Environment:**
-   ```bash
-   cp .env.example .env
-   ```
-3. **Use Reference Modules in `src/`:**
-   * See `src/crypto/envelope.ts` for credential encryption.
-   * See `src/adapters/*` for Yalidine, ZR Express, Ecotrack, and Maystro payloads.
-   * See `src/state-machine/phase-gate.ts` for webhook verification and monotonic phase transitions.
+2. Open **Postman** $\rightarrow$ Click **Import** $\rightarrow$ Select `postman/Algerian_Multi_Courier_Engine.postman_collection.json`.
+3. Open **Folder 1 (`1. Local Engine Sandbox`)** in Postman to test:
+   * `POST /api/sandbox/dispatch` — Test translating an order into Yalidine, ZR Express, Ecotrack (2-Step), or Maystro payloads.
+   * `POST /api/sandbox/webhook` — Test Phase-Gate state transitions (`Phase 1 -> Phase 3 -> Phase 4B -> Phase 4/5`) and Redis dedup keys.
+   * `POST /api/sandbox/reconcile` — Test COD financial payout auditing and $>100\text{ DZD}$ discrepancy detection.
+   * `POST /api/sandbox/encrypt` — Test `AES-256-GCM` `24-hex IV` + `32-hex Tag` + `AAD` encryption.
+4. Open **Folder 2 (`2. Live Courier APIs`)** when you have real API keys: paste your credentials into the Collection Variables (`YALIDINE_API_ID`, `YALIDINE_API_TOKEN`, `ECOTRACK_API_TOKEN`, etc.) to test live courier endpoints directly from Postman.
+
+### 3. Initialize PostgreSQL Schema
+```bash
+psql "$DATABASE_URL" -f sql/001_schema_v4.sql
+```
+
