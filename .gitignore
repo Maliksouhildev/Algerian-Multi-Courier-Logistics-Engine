@@ -1,0 +1,14 @@
+node_modules/
+dist/
+build/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+*creds*
+*token*
+database.sqlite
+*.log
+.DS_Store
